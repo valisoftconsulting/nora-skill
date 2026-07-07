@@ -163,18 +163,29 @@ def wait_review(queue: str, item: dict, timeout: float = 3600.0) -> str:
 
     Devuelve 'approved' | 'rejected' | 'timeout'. TÚ decides qué hacer con
     'timeout' (¿fail_business? ¿reintentar la espera?) — no lo tragues.
+    Un error transitorio de red NO se reporta como 'rejected' (eso saltaría un
+    item que el operador sí aprobó): se reintenta hasta agotar el timeout y
+    recién entonces devuelve 'timeout'.
     En dev local sin SDK devuelve 'approved' para no bloquear.
     """
+    import time as _time
+
     if not (sdk and item.get("id")):
         return "approved"
-    try:
-        return sdk.wait_for_queue_review(queue, item["id"], timeout=timeout)
-    except TimeoutError:
-        log("warning", f"wait_review expiró tras {timeout}s para el item {item.get('id')}.")
-        return "timeout"
-    except Exception as e:
-        log("warning", f"wait_review falló: {e}")
-        return "rejected"
+    deadline = _time.monotonic() + timeout
+    while True:
+        restante = deadline - _time.monotonic()
+        if restante <= 0:
+            log("warning", f"wait_review expiró tras {timeout}s para el item {item.get('id')}.")
+            return "timeout"
+        try:
+            return sdk.wait_for_queue_review(queue, item["id"], timeout=restante)
+        except TimeoutError:
+            log("warning", f"wait_review expiró tras {timeout}s para el item {item.get('id')}.")
+            return "timeout"
+        except Exception as e:
+            log("warning", f"wait_review error transitorio ({e}) — reintento en 10s.")
+            _time.sleep(min(10, max(0, deadline - _time.monotonic())))
 
 
 # --- Assets (credenciales/config cifradas) -----------------------------------------

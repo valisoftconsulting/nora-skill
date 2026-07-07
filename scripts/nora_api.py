@@ -134,13 +134,60 @@ def _unwrap(response: dict):
 _session_token_cache: str | None = None
 
 
+class _SessionLock:
+    """Lock de archivo entre procesos para el canje del refresh token.
+
+    El backend ROTA el refresh en cada canje (detección de reuso): dos scripts
+    en paralelo canjeando el mismo token pueden invalidar la sesión. Este lock
+    serializa el canje. Best-effort multiplataforma (O_CREAT|O_EXCL + espera);
+    un lock huérfano expira a los 30s.
+    """
+
+    LOCK = SESSION_FILE.with_suffix(".lock")
+
+    def __enter__(self):
+        deadline = time.time() + 15
+        while time.time() < deadline:
+            try:
+                fd = os.open(self.LOCK, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+                os.close(fd)
+                return self
+            except FileExistsError:
+                try:
+                    if time.time() - self.LOCK.stat().st_mtime > 30:
+                        self.LOCK.unlink(missing_ok=True)
+                        continue
+                except OSError:
+                    pass
+                time.sleep(0.2)
+        return self  # timeout: seguir sin lock (mejor intentar que morir)
+
+    def __exit__(self, *exc):
+        try:
+            self.LOCK.unlink(missing_ok=True)
+        except OSError:
+            pass
+
+
 def _session_access_token() -> str | None:
-    """Canjea el refresh token de `nora login` por un access token (y rota)."""
+    """Canjea el refresh token de `nora login` por un access token (y rota).
+
+    Serializado con _SessionLock para no invalidar la sesión si dos scripts
+    corren a la vez.
+    """
     global _session_token_cache
     if _session_token_cache:
         return _session_token_cache
     if not SESSION_FILE.exists():
         return None
+    with _SessionLock():
+        return _session_refresh_locked()
+
+
+def _session_refresh_locked() -> str | None:
+    global _session_token_cache
+    if _session_token_cache:
+        return _session_token_cache
     try:
         session = json.loads(SESSION_FILE.read_text())
         base = (session.get("api_url") or api_url()).rstrip("/")

@@ -19,7 +19,7 @@ import uuid as uuid_mod
 
 import nora_api
 
-TERMINAL = {"completed", "failed", "cancelled", "stopped"}
+TERMINAL = {"completed", "failed", "cancelled"}
 
 
 def resolve_process_id(value: str) -> str:

@@ -91,6 +91,61 @@ sobre** para asignar metadatos por item:
 | 422 | input_data no cumple el schema; cron inválido | corregir payload |
 | 429 | rate limit | backoff y reintentar |
 
+## Runbook: corrida fallida (de síntoma a remedio)
+
+1. `nora_job.py status <job_id>` → estado y `error_message`.
+2. `nora_job.py logs <job_id>` → los logs completos del robot (con `--archived`
+   si el job es antiguo y la retención ya los movió).
+3. Si el proceso usa cola: `nora_queue.py stats <cola>` y
+   `nora_queue.py list <cola> --status failed` (negocio: datos a corregir en
+   el origen) / `--status dead_letter` (sistema: ambiente roto — credencial
+   vencida, app caída, o clasificación equivocada).
+4. Arregla la causa (p. ej. rota la credencial: `nora_asset.py set ...`).
+5. Remedia en lote: `nora_queue.py action retry <cola> --status dead_letter`.
+6. Relanza si hace falta: `nora_job.py rerun <job_id>` (acepta `--input`,
+   `--machine`, `--priority`).
+7. ¿El bug es del robot? Publica el fix (`nora package && nora release push`),
+   apunta el proceso: `nora_process.py set-release`, y smoke:
+   `nora_smoke.py --process ...`. ¿La release nueva salió peor? El mismo
+   `set-release` con la versión anterior es tu rollback.
+
+## Flota y versiones del agente (auto-update)
+
+Desde el agente **0.8.0** la flota se actualiza sola: cada agente chequea la
+versión current al arrancar y cada ~30 min; si hay una nueva entra en *drain*
+(no toma jobs nuevos, **jamás interrumpe** los que corren), descarga el binario
+verificando SHA-256 + firma Ed25519, y se reemplaza con swap atómico.
+
+- **Ver el estado de la flota**: `nora_machine.py fleet-version` (versión
+  current vs lo que reporta cada máquina por heartbeat). En la consola, la
+  página Máquinas muestra el badge por máquina (ámbar = desactualizada,
+  `v?` = pre-0.8.0).
+- **Máquinas pre-0.8.0**: no tienen updater — requieren UNA reinstalación
+  manual (zip de consola encima; conserva la identidad). Después, todo
+  automático.
+- **Publicar versión nueva del agente** (solo Valisoft): mergear el bump de
+  `__version__` a main — el pipeline construye, verifica con smoke test,
+  publica y registra solo. **Kill-switch** (platform admin):
+  `POST /platform/agent-versions/{version}/set-current` — la flota converge a
+  esa versión (downgrade incluido) en ≤30 min.
+- **Alta de máquinas**: `nora_machine.py create --name ...` (muestra la
+  machine_key una vez) + descarga del agente desde la consola.
+
+## Otras superficies (mención breve)
+
+| Qué | Dónde | Nota |
+| --- | --- | --- |
+| Importar items desde CSV | `POST /bulk/import/queue-items/{queue_id}` (sesión) o consola → Colas → Importar | ideal en migraciones cuando el cliente entrega CSV; alternativa: convertir a JSON y `nora_queue.py bulk --reference-field` |
+| Exports (jobs, colas, auditoría) | `/bulk/export/*`, `GET /jobs/export/csv` (sesión/consola) | reportes |
+| Analytics | `GET /processes/{id}/analytics`, `GET /queues/{id}/analytics`, `/dashboard/*` (sesión) | tendencias, duraciones, tasas de fallo |
+| Feriados (para `--skip-holidays`) | `/holidays` CRUD (consola → Configuración) | cargar el calendario del país antes de usar skip_holidays |
+| API keys por API | `POST /api/v1/settings/api-keys` (sesión, admin) + `GET .../available-scopes` | automatizar el bootstrap de integraciones |
+| Grupos de máquinas | `/machine-groups` (consola) | organizar flotas grandes |
+| Canales de notificación | `/notifications` CRUD + `POST /notifications/test/{id}` (consola) | job_failed/completed, machine_offline, schedule_missed |
+| Anomalías | `GET /anomalies` (sesión/consola) | detección de duración/fallos atípicos — útil en diagnóstico |
+| DAGs por API | `POST /dags`, `POST /dags/{id}/execute` (sesión) | flujos multi-proceso; diseño en consola |
+| GraphQL (solo lectura) | `POST /graphql` (Bearer de sesión) | jobs/processes/machines/schedules/queues/dashboard_stats en una sola query |
+
 ## Webhooks salientes (NORA → tu sistema)
 
 Canales de notificación (consola → Notificaciones): `webhook`, `slack`,
@@ -131,7 +186,9 @@ honesta:
 | `nora_list.py queues/schedules/jobs/triggers` | ✗ | ✓ (solo sesión) |
 | `nora_trigger.py` / `nora_smoke.py` | ✓ | ✓ |
 | `nora_job.py status/stop` | ✓ | ✓ |
-| `nora_job.py rerun/respond` | ✗ | ✓ (solo sesión) |
+| `nora_job.py rerun/respond/logs` | ✗ | ✓ (solo sesión; `logs` sin --archived intenta API key primero) |
+| `nora_machine.py create/fleet-version` | ✗ | ✓ (solo sesión) |
+| `nora_machine.py list` | ✓ | ✓ |
 | `nora_queue.py create` | ✓ | ✓ |
 | `nora_queue.py add/bulk/list/stats` | ✓ | ✗ (solo API key) |
 | `nora_queue.py action` (retry/approve/reject/delete) | ✗ | ✓ (solo sesión) |

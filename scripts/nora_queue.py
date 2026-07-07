@@ -95,6 +95,10 @@ def main() -> None:
         if args.reference_field:
             envueltos = []
             for objeto in items:
+                if not isinstance(objeto, dict):
+                    raise nora_api.NoraError(
+                        f"--reference-field requiere objetos JSON; encontré: {objeto!r}", 2
+                    )
                 if isinstance(objeto.get("data"), dict):  # ya viene como sobre
                     envueltos.append(objeto)
                     continue
@@ -112,7 +116,7 @@ def main() -> None:
                 "POST", f"/queues/by-name/{nora_api.seg(args.nombre)}/items/bulk",
                 body={"items": lote, "priority": args.priority},
             )
-            total_agregados += result.get("added", len(lote))
+            total_agregados += int(result.get("added") or 0)
             nora_api.eprint(f"Lote {i // 1000 + 1}: {result.get('added')} items.")
         nora_api.emit({"added": total_agregados})
 

@@ -5,14 +5,19 @@ Skill oficial de **NORA** (Robots Center de Valisoft) para agentes de IA:
 
 - **Desarrollar robots NORA desde cero** con nivel profesional: manifiesto,
   argumentos tipados, colas transaccionales, assets, excepciones
-  negocio/sistema, logging, progreso, attended.
+  negocio/sistema, logging, progreso, attended. Templates para web
+  (**Playwright**), escritorio Windows (**pywinauto**), dispatcher/performer y
+  más, con **scaffolding** (`new_robot.py`) y diagnóstico de entorno
+  (`doctor.py`).
 - **Migrar automatizaciones existentes**: scripts Python sueltos
   (selenium/pandas/requests) y procesos de **UiPath** o **Automation
   Anywhere** (REFramework → patrón transaccional, Orchestrator/WLM queues →
   colas NORA, Credential Vault → assets).
-- **Operar y gestionar el orquestador en vivo** vía API pública: lanzar y
-  monitorear jobs, crear colas/assets/procesos/schedules/triggers, smoke tests
-  end-to-end.
+- **Operar, gestionar y depurar el orquestador en vivo** vía API pública:
+  lanzar/monitorear jobs, leer sus **logs**, crear
+  colas/assets/procesos/schedules/triggers, reintentar dead_letter en lote,
+  promote/rollback de releases, gestionar la **flota de agentes** y su
+  auto-update, smoke tests end-to-end.
 - **Auto-validar lo que genera**: pirámide de 6 niveles (estático → pytest →
   local → `nora dev run` → checklist → smoke e2e).
 
@@ -57,20 +62,25 @@ export NORA_API_URL=https://nora-api.valisoftconsulting.com/api/v1
 
 ```
 SKILL.md          punto de entrada del agente (flujos A–D + reglas duras)
-references/       contratos verificados: SDK, API, colas, CLI, migraciones, checklist
-scripts/          herramientas stdlib contra la API (nora_list, nora_trigger, nora_queue, ...)
-templates/        robots base: minimal · transactional (REFramework) · dispatcher-performer · browser (Playwright)
-evals/            escenarios de prueba del skill
+references/       contratos verificados: SDK, API, colas, CLI, migraciones,
+                  desktop-windows, files-and-excel, browser-patterns, checklist
+scripts/          herramientas stdlib: new_robot, doctor, nora_list/trigger/job/
+                  queue/asset/process/schedule/machine, nora_smoke, validate_manifest, self_check
+templates/        robots base: minimal · transactional (REFramework) ·
+                  dispatcher-performer · browser (Playwright) · desktop (pywinauto)
+evals/            escenarios de prueba del skill (5 flujos)
 ```
 
 ## Mantenimiento del skill
 
 - `python3 scripts/self_check.py` — detecta drift entre las references y el
-  `nora-sdk` instalado, y copias desincronizadas de `nora_helpers.py`.
+  `nora-sdk` instalado (firmas + pin de versión), y copias desincronizadas de
+  `nora_helpers.py`. Sale con error si el SDK no está instalado (no puede
+  verificar = no es "OK").
 - Las firmas de `references/sdk-reference.md` están fijadas a una versión del
   SDK (ver encabezado). Al actualizar el SDK: correr self_check, actualizar la
   reference y registrar en `CHANGELOG.md`.
-- Si cambias `templates/nora_helpers.py`, re-copia a los tres
+- Si cambias `templates/nora_helpers.py`, re-copia a los cinco
   `templates/robot-*/` (self_check exige igualdad byte a byte).
 
 ## Licencia

@@ -29,7 +29,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("recurso", choices=sorted(RUTAS))
     parser.add_argument("--page", type=int, default=1)
-    parser.add_argument("--limit", type=int, default=50)
+    parser.add_argument("--limit", type=int, default=50, choices=range(1, 101), metavar="1-100")
     args = parser.parse_args()
 
     api_path, session_path = RUTAS[args.recurso]

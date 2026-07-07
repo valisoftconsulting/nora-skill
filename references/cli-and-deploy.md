@@ -1,7 +1,7 @@
 # CLI `nora` y pipeline de despliegue
 
 > CLI incluida en `pip install nora-sdk` (o `nora-agent`). Verificado contra
-> nora-sdk 0.7.10.
+> nora-sdk 0.8.0.
 
 ## Comandos
 
@@ -88,8 +88,8 @@ python3 <skill>/scripts/nora_smoke.py --process "Mi proceso" \
 
 Notas:
 - Un proceso existente sigue apuntando a su release: tras `release push`
-  actualiza la release activa del proceso desde la consola (o recrea el
-  proceso apuntando a la nueva).
+  apúntalo a la nueva con `nora_process.py set-release "Mi proceso" --release
+  mi-robot@1.0.2` (promote; el mismo comando sirve de rollback).
 - Programar: `nora_schedule.py create --process "Mi proceso" --cron "0 7 * * 1-5" --tz America/Lima --skip-holidays`.
 - Disparo desde sistemas externos: `nora_trigger_mgmt.py create` (webhook con
   HMAC) o `POST /webhooks/trigger/{process_id}` con API key.

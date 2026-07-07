@@ -1,18 +1,22 @@
 ---
 name: nora
 description: >
-  Desarrolla, migra y opera robots RPA en NORA (Robots Center de Valisoft).
-  Úsalo cuando el usuario mencione: NORA, nora-sdk, nora.json, robots RPA en
-  Python, migrar un script Python a robot, migrar desde UiPath o Automation
-  Anywhere (REFramework, Orchestrator queues, Control Room, Credential Vault),
-  colas/queues, assets, jobs, procesos, schedules, disparar o monitorear
-  procesos en el orquestador, nora dev run, nora package, release push.
+  Desarrolla, migra, opera y depura robots RPA en NORA (Robots Center de
+  Valisoft). Úsalo cuando el usuario mencione: NORA, nora-sdk, nora.json,
+  robots RPA en Python, robot web (Playwright/selenium) o de escritorio Windows
+  (pywinauto/SAP GUI), automatizar Excel/CSV, migrar un script Python a robot,
+  migrar desde UiPath o Automation Anywhere (REFramework, Orchestrator queues,
+  Control Room, Credential Vault), colas/queues, assets, jobs, procesos,
+  schedules, triggers, disparar o monitorear procesos en el orquestador,
+  reintentar dead_letter, versión/auto-update del agente y la flota de
+  máquinas, nora dev run, nora package, release push.
   Keywords: RPA, robot, orquestador, automatización, Valisoft, queue, asset,
-  dispatcher, performer, attended, migration, orchestrator.
+  dispatcher, performer, attended, migration, orchestrator, Playwright,
+  pywinauto, Excel, scaffolding, fleet.
 license: MIT
 metadata:
-  version: "1.1.0"
-  compatible-sdk: "nora-sdk >= 0.7"
+  version: "1.2.0"
+  compatible-sdk: "nora-sdk >= 0.8"
   docs: https://docs.valisoftconsulting.com
 ---
 
@@ -28,7 +32,7 @@ requeridos; cada ejecución es un **Job** en una **Machine**. Trabajo
 transaccional va en **Queues** (items con estados, reintentos y excepción
 `business` terminal vs `system` reintentable). Secretos/config en **Assets**
 tipados por entorno (dev/staging/production). Disparo por **Schedule** (cron),
-**Trigger** (webhook/cola/archivo) o API. Todo lo operable desde fuera usa la
+**Trigger** (webhook, cola, archivo o correo) o API. Todo lo operable desde fuera usa la
 **API pública** con `X-API-Key` y scopes.
 
 ## Cómo usar este skill
@@ -42,14 +46,18 @@ fallback automático.
 ### A. Desarrollar un robot desde cero
 
 Referencias: `references/robot-architecture.md` + `references/sdk-reference.md`
-(+ `references/queues-and-exceptions.md` si hay cola).
+(+ `references/queues-and-exceptions.md` si hay cola; + `browser-patterns.md`,
+`desktop-windows.md` o `files-and-excel.md` según el target).
 
-1. Entrevista mínima: ¿qué hace? ¿cuántos items por corrida? ¿credenciales o
-   URLs de sistemas? ¿necesita aprobación humana? ¿cómo se dispara?
-2. Elige template con la tabla de decisión de robot-architecture y cópialo de
-   `templates/` (minimal | transactional | dispatcher-performer).
-3. **Contrato primero**: escribe `nora.json` y valida con
-   `scripts/validate_manifest.py` antes de codificar.
+1. `scripts/doctor.py` para confirmar el entorno (Python, SDK, sesión, API key,
+   máquinas). Entrevista mínima: ¿qué hace? ¿cuántos items por corrida?
+   ¿credenciales o URLs de sistemas? ¿web, escritorio o archivos? ¿aprobación
+   humana? ¿cómo se dispara?
+2. Elige template con la tabla de decisión de robot-architecture y créalo con
+   `scripts/new_robot.py <nombre> --template <minimal|transactional|
+   dispatcher-performer|browser|desktop> [--queue <cola>]`.
+3. **Contrato primero**: completa `nora.json` (inputs/outputs con description) y
+   valida con `scripts/validate_manifest.py` antes de codificar.
 4. Implementa la lógica llamando SOLO a `nora_helpers.py` (nunca el SDK a pelo
    desde la lógica de negocio).
 5. Infraestructura: cola (`scripts/nora_queue.py create`), assets
@@ -89,20 +97,25 @@ falta).
 
 Referencia: `references/api-reference.md` (tabla endpoint→scope→script).
 
-1. Verifica `NORA_API_KEY` (o sesión `nora login`). Si falta, di dónde
-   generarla (Settings → API Keys, plan Pro/Enterprise) y qué scopes necesita
-   la operación — falla temprano, no a mitad.
-2. Descubre con `scripts/nora_list.py machines|processes`.
+1. Verifica el entorno con `scripts/doctor.py` (valida `NORA_API_KEY` y sus
+   scopes reales, sesión, máquinas online). Si falta la key, di dónde generarla
+   (Settings → API Keys, plan Pro/Enterprise) y qué scopes necesita — falla
+   temprano, no a mitad.
+2. Descubre con `scripts/nora_list.py machines|processes|queues|schedules|jobs|triggers`.
 3. Opera con el script correspondiente; para jobs usa SIEMPRE `--wait` o
    `nora_job.py status --follow` — nunca dejes un job disparado sin reportar
    su desenlace.
-4. Diagnóstico de fallos: job → `error_message`; cola →
-   `nora_queue.py list --status failed|dead_letter` y stats.
+4. Diagnóstico de fallos (runbook completo en api-reference): job →
+   `nora_job.py status`/`logs [--archived]`; cola →
+   `nora_queue.py list --status failed|dead_letter` y `stats`.
 5. Remediación y despliegue sin UI: `nora_queue.py action retry <cola>
    --status dead_letter` (reintentos en lote tras arreglar la causa),
    `nora_process.py set-release` (promote/rollback de release),
    `nora_job.py rerun|respond` (relanzar / responder attended). Estos usan la
    sesión de `nora login` — la tabla de qué degrada está en api-reference.
+6. Flota de agentes: `scripts/nora_machine.py create` (alta) y `fleet-version`
+   (qué versión corre cada máquina; el auto-update es automático desde 0.8.0 —
+   ver "Flota y versiones del agente" en api-reference).
 
 ## Reglas duras (siempre aplican)
 

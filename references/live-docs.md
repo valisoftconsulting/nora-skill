@@ -29,7 +29,7 @@ Documentación oficial: **https://docs.valisoftconsulting.com** (español).
 | --- | --- |
 | Primer robot paso a paso | `/tutoriales/primer-robot-minimo/` |
 | Colas end-to-end (RPA Challenge) | `/tutoriales/rpa-challenge-colas/` |
-| Instalación del agente en una máquina | `/guia/instalacion-agente/` |
+| Instalación del agente + auto-actualizaciones | `/guia/instalacion-agente/` |
 | Argumentos in/out | `/guia/argumentos/` |
 | Planes y facturación | `/guia/planes-y-facturacion/` |
 | Flujos DAG multi-proceso | `/guia/flujos-dag/` |

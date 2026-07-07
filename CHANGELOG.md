@@ -3,6 +3,34 @@
 Formato: [SemVer](https://semver.org/lang/es/). Cada entrada registra contra
 qué versión de `nora-sdk` y de la API pública se verificó el skill.
 
+## 1.2.0 — 2026-07-07
+
+Verificado contra **nora-sdk 0.8.0** (firmas idénticas desde 0.7.9). Segunda
+auditoría externa (7.5/10) aplicada en su totalidad — cobertura completa de
+NORA + herramientas de desarrollo:
+
+- **Ayudar a desarrollar**: `scripts/new_robot.py` (scaffolding desde
+  template), `scripts/doctor.py` (diagnóstico de entorno con scopes reales),
+  template `robot-desktop` (pywinauto UIA para Windows) + references nuevas
+  `desktop-windows.md`, `files-and-excel.md`, `browser-patterns.md`.
+- **Debugging**: `nora_job.py logs [--archived]` (los logs del robot eran
+  inaccesibles); runbook "corrida fallida" de síntoma a remedio en
+  api-reference; `nora_job.py rerun` acepta `--machine`/`--priority`.
+- **Flota/auto-update**: `scripts/nora_machine.py` (alta + `fleet-version`);
+  sección "Flota y versiones del agente" (drain, kill-switch, piso 0.8.0,
+  reinstalación única de flota vieja).
+- **Cobertura**: sección "Otras superficies" (CSV import, analytics, holidays,
+  API keys por API, machine-groups, notificaciones, anomalías, DAGs, GraphQL).
+- **Correcciones de auditoría**: sello de versión 0.8.0; `self_check.py` ahora
+  falla (exit 2) si el SDK no está instalado y valida el pin de versión (antes
+  decía "sin drift" sin poder verificar); `wait_review` reintenta ante errores
+  de red en vez de devolver "rejected" (un item aprobado ya no se salta);
+  `nora_api.py` serializa el canje del refresh token con lock de archivo;
+  `--limit` capeado a 100 en todos los scripts; `--reference-field` valida que
+  los items sean objetos; estados terminales y tipos de trigger corregidos;
+  nota de set-release en vez de mandar a la consola. Evals nuevos (retry
+  post-mortem, rollback, attended, web/escritorio).
+
 ## 1.1.0 — 2026-07-07
 
 Verificado contra **nora-sdk 0.7.10** (firmas idénticas a 0.7.9).

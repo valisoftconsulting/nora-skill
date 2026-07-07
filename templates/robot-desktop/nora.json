@@ -1,0 +1,13 @@
+{
+  "name": "mi-robot-escritorio",
+  "version": "1.0.0",
+  "entry_point": "main.py",
+  "inputs": [
+    { "name": "max_items", "type": "integer", "default": 0, "description": "Máximo de items a procesar (0 = sin límite)" }
+  ],
+  "outputs": [
+    { "name": "procesados", "type": "integer" },
+    { "name": "fallidos_negocio", "type": "integer" },
+    { "name": "fallidos_sistema", "type": "integer" }
+  ]
+}

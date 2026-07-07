@@ -50,7 +50,7 @@ def main() -> None:
 
     p_list = sub.add_parser("list", help="listar procesos activos")
     p_list.add_argument("--page", type=int, default=1)
-    p_list.add_argument("--limit", type=int, default=50)
+    p_list.add_argument("--limit", type=int, default=50, choices=range(1, 101), metavar="1-100")
 
     p_rel = sub.add_parser("releases", help="listar releases de un paquete")
     p_rel.add_argument("--package", required=True)

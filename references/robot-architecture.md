@@ -12,7 +12,7 @@ Se empaqueta en zip (`nora package`), se publica como **Release** de un
 Package ──▶ Release (zip + entry_point + argumentos) ──▶ Process ──▶ Job
                                                             ▲
                                     Schedule (cron) ────────┤
-                                    Trigger (webhook/cola) ─┘
+                                    Trigger (webhook/cola/archivo/correo) ─┘
 ```
 
 ## Estructura recomendada
@@ -72,10 +72,16 @@ Valida siempre con `python3 scripts/validate_manifest.py <carpeta>` (sin red).
 | Corrida única: reporte, descarga, conciliación pequeña | `robot-minimal` |
 | N items con reintentos/auditoría/estado por item | `robot-transactional` |
 | Fuente de datos separada del procesamiento; escalar en paralelo | `robot-dispatcher-performer` |
-| Automatización de navegador (web) sobre cola | `robot-browser` (Playwright + viewport de sesión) |
+| Automatización de navegador (web) sobre cola | `robot-browser` (Playwright + viewport de sesión) → `browser-patterns.md` |
+| App de escritorio Windows (SAP GUI, ERP legacy) sobre cola | `robot-desktop` (pywinauto UIA) → `desktop-windows.md` |
 
 Regla práctica: **>20 items, o necesidad de reintentos por item, o auditoría
 de qué pasó con cada registro → usa cola** (ver `queues-and-exceptions.md`).
+
+Atajo: `python3 scripts/new_robot.py <nombre> --template <t> --queue <cola>`
+copia el template, renombra `nora.json` y ajusta la cola de una vez.
+
+Manejo de archivos/Excel/CSV (el 80 % del RPA real): `files-and-excel.md`.
 
 ## Reglas de robots largos
 

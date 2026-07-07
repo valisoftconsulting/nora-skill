@@ -14,6 +14,8 @@ Chequea:
 Exit 0 = sin drift · 1 = drift detectado · 2 = no se pudo chequear.
 """
 
+from __future__ import annotations
+
 import argparse
 import hashlib
 import inspect
@@ -29,16 +31,30 @@ LIVE_URLS = [
 ]
 
 
-def check_sdk_signatures() -> list[str]:
-    """Compara las firmas listadas en sdk-reference.md contra el SDK instalado."""
+def check_sdk_signatures() -> list[str] | None:
+    """Compara firmas Y versión del SDK instalado contra sdk-reference.md.
+
+    Devuelve None si el SDK no está instalado (NO VERIFICADO ≠ sin drift).
+    """
     problemas: list[str] = []
     try:
+        import nora_agent
         from nora_agent import sdk
     except ImportError:
-        print("· SDK no instalado (pip install nora-sdk) — salto chequeo de firmas.")
-        return problemas
+        return None
 
     reference = (SKILL_ROOT / "references" / "sdk-reference.md").read_text(encoding="utf-8")
+
+    # Pin de versión: el sello "Verificado contra nora-sdk X.Y.Z" debe coincidir
+    # con la versión instalada — si Valisoft publicó un SDK nuevo, esto lo grita
+    # aunque las firmas no hayan cambiado.
+    pin = re.search(r"nora-sdk (\d+\.\d+\.\d+)", reference)
+    installed = getattr(nora_agent, "__version__", None)
+    if pin and installed and pin.group(1) != installed:
+        problemas.append(
+            f"Versión del SDK instalado ({installed}) != sello de sdk-reference.md "
+            f"({pin.group(1)}) — re-verificar firmas y actualizar el sello + CHANGELOG."
+        )
     documentadas = set(re.findall(r"^### `(\w+)\(", reference, flags=re.MULTILINE))
     if not documentadas:
         problemas.append("sdk-reference.md no contiene firmas '### `funcion(...' — ¿formato cambiado?")
@@ -99,7 +115,8 @@ def main() -> None:
     parser.add_argument("--offline", action="store_true", help="no chequear URLs")
     args = parser.parse_args()
 
-    problemas = check_sdk_signatures() + check_helpers_copies()
+    sdk_result = check_sdk_signatures()
+    problemas = (sdk_result or []) + check_helpers_copies()
     if not args.offline:
         problemas += check_live_docs()
 
@@ -109,6 +126,12 @@ def main() -> None:
             print(f"  ✗ {p}")
         print("\nActualiza las references/templates y registra el cambio en CHANGELOG.md.")
         sys.exit(1)
+    if sdk_result is None:
+        print(
+            "NO VERIFICADO: nora-sdk no está instalado — no puedo comparar firmas.\n"
+            "Instálalo (pip install nora-sdk) o corre con PYTHONPATH=<repo>/sdk."
+        )
+        sys.exit(2)
     print("OK — sin drift: SDK, copias de nora_helpers y docs en orden.")
 
 

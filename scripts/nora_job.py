@@ -4,12 +4,15 @@
 Uso:
     nora_job.py status <job_id> [--follow] [--timeout 600]
     nora_job.py stop <job_id>
-    nora_job.py rerun <job_id> [--input '{"k": "v"}']
+    nora_job.py rerun <job_id> [--input '{"k": "v"}'] [--machine <uuid>] [--priority 1|3|5]
     nora_job.py respond <job_id> --value "Sí"
+    nora_job.py logs <job_id> [--archived]
 
 status/stop: API key (jobs:read / jobs:stop) con fallback a sesión.
-rerun/respond: SOLO sesión de `nora login` (endpoints internos).
+rerun/respond/logs: SOLO sesión de `nora login` (endpoints internos).
 `respond` contesta un ask_user() pendiente de un job attended.
+`logs` imprime los logs del job en crudo (excepción al contrato JSON: los
+logs SON texto); --archived trae los logs archivados de jobs antiguos.
 """
 
 import argparse
@@ -18,7 +21,7 @@ import time
 
 import nora_api
 
-TERMINAL = {"completed", "failed", "cancelled", "stopped"}
+TERMINAL = {"completed", "failed", "cancelled"}
 
 
 def main() -> None:
@@ -36,6 +39,13 @@ def main() -> None:
     p_rerun = sub.add_parser("rerun", help="relanzar el job (sesión nora login)")
     p_rerun.add_argument("job_id")
     p_rerun.add_argument("--input", help="input_data nuevo como JSON (opcional)")
+    p_rerun.add_argument("--machine", help="UUID de máquina destino (opcional)")
+    p_rerun.add_argument("--priority", type=int, choices=[1, 3, 5])
+
+    p_logs = sub.add_parser("logs", help="logs del job en crudo (sesión)")
+    p_logs.add_argument("job_id")
+    p_logs.add_argument("--archived", action="store_true",
+                        help="logs archivados (jobs antiguos ya purgados de la fila)")
 
     p_respond = sub.add_parser("respond", help="responder input pendiente de job attended (sesión)")
     p_respond.add_argument("job_id")
@@ -43,12 +53,37 @@ def main() -> None:
 
     args = parser.parse_args()
 
+    if args.cmd == "logs":
+        if args.archived:
+            data = nora_api.call_session(
+                "GET", f"/jobs/{nora_api.seg(args.job_id)}/logs/archived"
+            )
+            print(data.get("logs") or "(sin logs archivados)")
+        else:
+            job = nora_api.call(
+                "GET", f"/jobs/{nora_api.seg(args.job_id)}",
+                session_path=f"/jobs/{nora_api.seg(args.job_id)}",
+            )
+            logs = job.get("logs")
+            if not logs:
+                nora_api.eprint(
+                    "El job no tiene logs en línea (¿archivados por retención? "
+                    "prueba --archived)."
+                )
+            print(logs or "")
+        return
+
     if args.cmd == "rerun":
         import json as json_mod
 
-        body = None
+        body = {}
         if args.input:
-            body = {"input_data": json_mod.loads(args.input)}
+            body["input_data"] = json_mod.loads(args.input)
+        if args.machine:
+            body["machine_id"] = args.machine
+        if args.priority:
+            body["priority"] = args.priority
+        body = body or None
         job = nora_api.call_session(
             "POST", f"/jobs/{nora_api.seg(args.job_id)}/rerun", body=body
         )
