@@ -1,0 +1,46 @@
+# CI de despliegue de un robot NORA: valida → tests → package → release push.
+# Copia a .github/workflows/deploy.yml en el repo DEL ROBOT.
+#
+# Secrets requeridos en el repo:
+#   NORA_EMAIL / NORA_PASSWORD  — cuenta con rol admin (para `nora release push`).
+#     `nora login --password` es el flujo headless para CI; en tu máquina usa
+#     el device flow (`nora login`) que no expone contraseña.
+
+name: Desplegar robot a NORA
+
+on:
+  push:
+    tags: ["v*"]          # publica al taguear v1.2.3 (o cambia a branches: [main])
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar SDK de NORA
+        run: pip install nora-sdk pytest
+
+      - name: Validar manifiesto
+        run: |
+          python -c "import json; m=json.load(open('nora.json')); print(m['name'], m['version'])"
+
+      - name: Tests unitarios
+        run: |
+          if [ -d tests ]; then python -m pytest tests/ -q; fi
+
+      - name: Empaquetar
+        run: nora package --bump none
+
+      - name: Publicar release
+        env:
+          NORA_EMAIL: ${{ secrets.NORA_EMAIL }}
+          NORA_PASSWORD: ${{ secrets.NORA_PASSWORD }}
+        run: |
+          nora login --email "$NORA_EMAIL" --password "$NORA_PASSWORD"
+          nora release push
+          nora logout

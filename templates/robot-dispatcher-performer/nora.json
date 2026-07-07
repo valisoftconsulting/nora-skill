@@ -1,0 +1,15 @@
+{
+  "name": "mi-robot-dp",
+  "version": "1.0.0",
+  "entry_point": "main.py",
+  "inputs": [
+    { "name": "mode", "type": "text", "default": "auto", "description": "dispatcher | performer | auto (dispatch si la cola está vacía y luego procesa)" },
+    { "name": "max_items", "type": "integer", "default": 0, "description": "Máximo de items a procesar (0 = sin límite; solo performer)" }
+  ],
+  "outputs": [
+    { "name": "encolados", "type": "integer" },
+    { "name": "procesados", "type": "integer" },
+    { "name": "fallidos_negocio", "type": "integer" },
+    { "name": "fallidos_sistema", "type": "integer" }
+  ]
+}

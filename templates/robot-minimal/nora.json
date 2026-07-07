@@ -1,0 +1,13 @@
+{
+  "name": "mi-robot",
+  "version": "1.0.0",
+  "entry_point": "main.py",
+  "inputs": [
+    { "name": "mes", "type": "text", "required": true, "description": "Mes a procesar (YYYY-MM)" },
+    { "name": "modo_prueba", "type": "bool", "default": false, "description": "Si es true, no escribe cambios reales" }
+  ],
+  "outputs": [
+    { "name": "procesados", "type": "integer" },
+    { "name": "resumen", "type": "text" }
+  ]
+}

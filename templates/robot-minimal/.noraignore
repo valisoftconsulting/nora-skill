@@ -1,0 +1,4 @@
+# Excluidos del paquete (nora package). Los defaults ya cubren .venv, __pycache__,
+# .env, .git, node_modules, etc. Añade aquí lo específico de tu robot:
+data/salidas/
+*.log

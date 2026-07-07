@@ -1,0 +1,5 @@
+# Dependencias del robot con versiones fijadas. El agente crea un venv e
+# instala esto en la máquina. Ejemplos (borra lo que no uses):
+# playwright==1.49.0
+# pandas==2.2.3
+# httpx==0.27.2
