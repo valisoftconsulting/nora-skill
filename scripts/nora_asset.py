@@ -42,7 +42,7 @@ def main() -> None:
 
     if args.cmd == "get":
         data = nora_api.call_api_key(
-            "GET", f"/assets/by-name/{args.nombre}", params={"environment": args.env}
+            "GET", f"/assets/by-name/{nora_api.seg(args.nombre)}", params={"environment": args.env}
         )
         if not args.reveal:
             data = {k: ("***" if k in ("value", "username") else v) for k, v in data.items()}
@@ -82,7 +82,7 @@ def main() -> None:
         if args.description:
             update["description"] = args.description
         asset = nora_api.call_api_key(
-            "PUT", f"/assets/by-name/{args.nombre}",
+            "PUT", f"/assets/by-name/{nora_api.seg(args.nombre)}",
             body=update, params={"environment": args.env},
         )
         nora_api.eprint(f"Asset '{args.nombre}' ya existía — valor actualizado.")

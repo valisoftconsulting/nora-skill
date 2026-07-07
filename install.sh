@@ -26,7 +26,11 @@ while [[ $# -gt 0 ]]; do
     --gemini) DO_GEMINI=1 ;;
     --all) DO_CLAUDE=1; DO_CODEX=1; DO_GEMINI=1 ;;
     --uninstall) DO_UNINSTALL=1 ;;
-    --project) PROJECT="$2"; shift ;;
+    --project)
+      if [[ $# -lt 2 || "$2" == --* ]]; then
+        echo "--project requiere una ruta (ej. --project ~/mi-proyecto)" >&2; exit 2
+      fi
+      PROJECT="$2"; shift ;;
     -h|--help) grep '^#' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "Opción desconocida: $1 (usa --help)" >&2; exit 2 ;;
   esac
@@ -95,7 +99,12 @@ fi
 if [[ $DO_CLAUDE == 1 ]]; then
   target="$(claude_target)"
   mkdir -p "$(dirname "$target")"
-  [[ -L "$target" || -e "$target" ]] && rm -rf "$target"
+  if [[ -e "$target" && ! -L "$target" ]]; then
+    echo "ERROR: $target existe y NO es un symlink (¿otro skill instalado ahí?)." >&2
+    echo "Muévelo o bórralo tú mismo y reintenta." >&2
+    exit 1
+  fi
+  [[ -L "$target" ]] && rm "$target"
   ln -s "$SKILL_DIR" "$target"
   echo "  ✓ Claude Code: $target → $SKILL_DIR"
 fi

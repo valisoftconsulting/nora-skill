@@ -72,6 +72,7 @@ Valida siempre con `python3 scripts/validate_manifest.py <carpeta>` (sin red).
 | Corrida única: reporte, descarga, conciliación pequeña | `robot-minimal` |
 | N items con reintentos/auditoría/estado por item | `robot-transactional` |
 | Fuente de datos separada del procesamiento; escalar en paralelo | `robot-dispatcher-performer` |
+| Automatización de navegador (web) sobre cola | `robot-browser` (Playwright + viewport de sesión) |
 
 Regla práctica: **>20 items, o necesidad de reintentos por item, o auditoría
 de qué pasó con cada registro → usa cola** (ver `queues-and-exceptions.md`).
@@ -95,7 +96,23 @@ Dos mecanismos, no los confundas:
   y un revisor aprueba/rechaza (consola, Slack o Teams). Para aprobaciones
   por transacción (facturas, pagos).
 
-Ambos aceptan timeout — decide qué pasa al expirar (¿fail business o system?).
+Ambos aceptan timeout. Con `nora_helpers`, `wait_review` devuelve
+`"approved" | "rejected" | "timeout"` (y `"approved"` en dev local sin SDK):
+maneja el `"timeout"` explícitamente — el helper no decide por ti. Un operador
+también puede responder un `ask_user` pendiente desde fuera con
+`scripts/nora_job.py respond <job_id> --value "..."`.
+
+## Pipelines multi-proceso (DAGs) y notificaciones
+
+- Si el pipeline son **varios procesos encadenados** con dependencias
+  (extraer → transformar → registrar en robots distintos), NO lo simules con
+  triggers ni `on_success_trigger`: NORA tiene **Flujos DAG** (se diseñan en
+  la consola; ver docs vivas `guia/flujos-dag`). Para el encadenado simple de
+  dos procesos sí basta `on_success_trigger_process_id` del proceso.
+- **Alertas** (`job_failed`, `job_completed`, `machine_offline`,
+  `schedule_missed`) se configuran como canales de notificación
+  (webhook/Slack/Teams/email) en la consola → Notificaciones; el robot no
+  necesita enviar correos por su cuenta.
 
 ## Desarrollo local y depuración
 

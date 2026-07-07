@@ -1,0 +1,2 @@
+playwright==1.49.0
+# En cada máquina, una vez: python -m playwright install chromium

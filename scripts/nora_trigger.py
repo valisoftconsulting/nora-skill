@@ -47,7 +47,7 @@ def resolve_process_id(value: str) -> str:
 
 
 def get_job(job_id: str) -> dict:
-    return nora_api.call("GET", f"/jobs/{job_id}", session_path=f"/jobs/{job_id}")
+    return nora_api.call("GET", f"/jobs/{nora_api.seg(job_id)}", session_path=f"/jobs/{nora_api.seg(job_id)}")
 
 
 def follow(job_id: str, timeout: int) -> dict:

@@ -131,8 +131,9 @@ def fail_business(queue: str, item: dict, error: str) -> None:
     if sdk and item.get("id"):
         try:
             sdk.fail_queue_item(queue, item["id"], error, exception_type="business")
-        except Exception:
-            pass
+        except Exception as e:
+            # Si esto falla, el item queda in_progress huérfano: déjalo rastreable.
+            log("error", f"fail_business no pudo marcar el item {item.get('id')}: {e}")
 
 
 def fail_system(queue: str, item: dict, error: str) -> None:
@@ -144,8 +145,8 @@ def fail_system(queue: str, item: dict, error: str) -> None:
     if sdk and item.get("id"):
         try:
             sdk.fail_queue_item(queue, item["id"], error, exception_type="system")
-        except Exception:
-            pass
+        except Exception as e:
+            log("error", f"fail_system no pudo marcar el item {item.get('id')}: {e}")
 
 
 def send_for_review(queue: str, item: dict) -> None:
@@ -158,12 +159,19 @@ def send_for_review(queue: str, item: dict) -> None:
 
 
 def wait_review(queue: str, item: dict, timeout: float = 3600.0) -> str:
-    """Bloquea hasta que el operador apruebe/rechace. Devuelve 'approved' o
-    'rejected' (o 'approved' si no hay SDK, para no bloquear en dev local)."""
+    """Bloquea hasta que el operador apruebe/rechace.
+
+    Devuelve 'approved' | 'rejected' | 'timeout'. TÚ decides qué hacer con
+    'timeout' (¿fail_business? ¿reintentar la espera?) — no lo tragues.
+    En dev local sin SDK devuelve 'approved' para no bloquear.
+    """
     if not (sdk and item.get("id")):
         return "approved"
     try:
         return sdk.wait_for_queue_review(queue, item["id"], timeout=timeout)
+    except TimeoutError:
+        log("warning", f"wait_review expiró tras {timeout}s para el item {item.get('id')}.")
+        return "timeout"
     except Exception as e:
         log("warning", f"wait_review falló: {e}")
         return "rejected"

@@ -56,7 +56,9 @@ triggers, manejo de excepciones). Lo que se reescribe: la automatización en sí
    leer config); End → `end()`. Mantén los nombres de las transacciones
    (references) para comparar contra el bot original.
 5. **Migrar datos en vuelo**: exporta los items pendientes de la cola de
-   Orchestrator y cárgalos con `nora_queue.py bulk`.
+   Orchestrator y cárgalos con `nora_queue.py bulk --reference-field <campo>`
+   — cada item conserva su Reference original (idempotencia y trazabilidad en
+   la consola).
 6. **Validar en pirámide** (`testing-and-validation.md`) y correr **en paralelo**
    con el bot UiPath (en dev/staging o con muestra) comparando salidas antes de
    apagar el original.

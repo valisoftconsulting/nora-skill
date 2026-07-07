@@ -1,15 +1,26 @@
 # CLI `nora` y pipeline de despliegue
 
 > CLI incluida en `pip install nora-sdk` (o `nora-agent`). Verificado contra
-> nora-sdk 0.7.9.
+> nora-sdk 0.7.10.
 
 ## Comandos
 
 ### `nora login`
 Device flow (RFC 8628): muestra un código, abre el navegador, sin contraseña
 en la terminal. Sesión en `~/.nora/credentials.json` (0600, refresh token que
-ROTA en cada uso). Headless/CI: `nora login --email x --password y` (+ MFA si
-aplica). `nora logout` borra la sesión.
+ROTA en cada uso). `nora logout` borra la sesión.
+
+**Headless/CI**: `--password` es un flag SIN valor — la contraseña se lee por
+getpass; en un runner sin TTY getpass cae a stdin, así que el patrón correcto
+es:
+
+```bash
+printf '%s\n' "$NORA_PASSWORD" | nora login --email "$NORA_EMAIL" --password
+```
+
+⚠ Si la cuenta tiene **MFA activado, el login headless NO funciona** (el
+código MFA es interactivo): usa una cuenta de servicio sin MFA para CI o
+publica desde una máquina con sesión ya iniciada.
 
 ### `nora dev run <entry.py>`
 Corre el robot LOCALMENTE con un token de desarrollo real (entornos

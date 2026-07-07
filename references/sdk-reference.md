@@ -1,6 +1,7 @@
 # Referencia del SDK `nora_agent.sdk`
 
-> Verificado contra **nora-sdk 0.7.9** (2026-07-07). Si sospechas drift, corre
+> Verificado contra **nora-sdk 0.7.10** (2026-07-07; firmas idénticas a 0.7.9).
+> Si sospechas drift, corre
 > `python3 scripts/self_check.py` — compara estas firmas con el SDK instalado.
 
 ```python

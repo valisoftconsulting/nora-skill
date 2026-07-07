@@ -61,6 +61,12 @@ dos veces (schedule duplicado, reintento del job), el item repetido es
 detectable y el performer puede saltarlo. Además `reference` permite buscar el
 item de una factura concreta en la consola.
 
+**También en bulk**: cada elemento puede ser un sobre
+`{"data": {...}, "reference": "F-001", "priority": 5, "deadline": "...", "postpone": "..."}`
+en vez de data plano — así las cargas masivas conservan reference y priority
+por item. Con el script: `nora_queue.py bulk facturas --file items.json
+--reference-field numero` (eleva el campo `numero` de cada objeto a reference).
+
 ## Revisión humana por transacción
 
 ```python
@@ -75,15 +81,27 @@ if decision == "approved":
 Configura revisores de la cola en la consola. Si hay canal Slack/Teams, la
 aprobación llega como tarjeta con botones.
 
+`wait_review` puede devolver `"timeout"` (el helper NO lo mapea a rejected):
+decide explícitamente qué hacer al expirar. En dev local sin SDK devuelve
+`"approved"` para no bloquear.
+
+⚠ **Carrera con performers en paralelo**: al aprobar, el item vuelve a estado
+`new` — si hay OTROS performers consumiendo la misma cola, uno puede
+reclamarlo antes de que el robot que esperaba la revisión lo complete
+(doble procesamiento). Usa el patrón review solo con un performer por cola, o
+diseña `process_transaction` idempotente frente a re-ejecución.
+
 ## Gestión de la cola desde fuera del robot
 
 | Acción | Herramienta |
 | --- | --- |
 | Crear cola | `scripts/nora_queue.py create facturas --max-retries 3` |
 | Encolar 1 item | `scripts/nora_queue.py add facturas --data '{...}' --reference F-001` |
-| Encolar CSV/lote | `scripts/nora_queue.py bulk facturas --file items.json` |
+| Encolar CSV/lote (con reference) | `scripts/nora_queue.py bulk facturas --file items.json --reference-field numero` |
 | Ver por estado | `scripts/nora_queue.py list facturas --status dead_letter` |
 | Conteos | `scripts/nora_queue.py stats facturas` |
+| Reintentar dead_letter en lote | `scripts/nora_queue.py action retry facturas --status dead_letter` |
+| Aprobar/rechazar pendientes en lote | `scripts/nora_queue.py action approve facturas --status pending_review` |
 
 ## Diagnóstico post-corrida
 
@@ -92,5 +110,6 @@ aprobación llega como tarjeta con botones.
    item; son datos a corregir en el origen.
 3. `list --status dead_letter` — errores de sistema persistentes: ambiente roto
    (credencial vencida, app caída) o clasificación equivocada.
-4. En la consola se pueden reintentar (bulk retry) los dead_letter tras
-   arreglar la causa.
+4. Tras arreglar la causa, reintenta los dead_letter en lote:
+   `nora_queue.py action retry <cola> --status dead_letter` (o desde la
+   consola).

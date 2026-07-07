@@ -62,7 +62,7 @@ def main() -> None:
 
     elif args.cmd == "active":
         schedule = nora_api.call_api_key(
-            "PATCH", f"/schedules/{args.schedule_id}/active",
+            "PATCH", f"/schedules/{nora_api.seg(args.schedule_id)}/active",
             body={"is_enabled": bool(args.on)},
         )
         nora_api.emit(schedule)

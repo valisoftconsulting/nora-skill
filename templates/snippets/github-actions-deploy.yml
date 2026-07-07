@@ -2,9 +2,11 @@
 # Copia a .github/workflows/deploy.yml en el repo DEL ROBOT.
 #
 # Secrets requeridos en el repo:
-#   NORA_EMAIL / NORA_PASSWORD  — cuenta con rol admin (para `nora release push`).
-#     `nora login --password` es el flujo headless para CI; en tu máquina usa
-#     el device flow (`nora login`) que no expone contraseña.
+#   NORA_EMAIL / NORA_PASSWORD  — cuenta con rol admin (para `nora release push`)
+#     y SIN MFA (el login headless no puede responder el código MFA; usa una
+#     cuenta de servicio dedicada). `--password` es un flag sin valor: getpass
+#     lee la contraseña de stdin cuando no hay TTY — por eso el printf | pipe.
+#     En tu máquina usa el device flow (`nora login`), que no expone contraseña.
 
 name: Desplegar robot a NORA
 
@@ -41,6 +43,6 @@ jobs:
           NORA_EMAIL: ${{ secrets.NORA_EMAIL }}
           NORA_PASSWORD: ${{ secrets.NORA_PASSWORD }}
         run: |
-          nora login --email "$NORA_EMAIL" --password "$NORA_PASSWORD"
+          printf '%s\n' "$NORA_PASSWORD" | nora login --email "$NORA_EMAIL" --password
           nora release push
           nora logout

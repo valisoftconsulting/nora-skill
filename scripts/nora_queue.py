@@ -5,12 +5,19 @@ Uso:
     nora_queue.py create <nombre> [--description "..."] [--max-retries 3]
     nora_queue.py add <nombre> --data '{"factura": "F-001"}' \
         [--priority 1|3|5] [--reference F-001] [--deadline ISO] [--postpone ISO]
-    nora_queue.py bulk <nombre> --file items.json [--priority 3]
+    nora_queue.py bulk <nombre> --file items.json [--priority 3] [--reference-field id]
     nora_queue.py list <nombre> [--status new|in_progress|pending_review|completed|failed|dead_letter] [--page 1] [--limit 20]
     nora_queue.py stats <nombre>
+    nora_queue.py action retry|approve|reject|delete <nombre> (--status dead_letter | --ids id1,id2)
 
-`bulk --file` espera un JSON con una lista de objetos (máx 1000 por llamada).
-Scopes: queues:manage / queues:write / queues:read.
+`bulk --file` espera un JSON con una lista de objetos. Cada objeto puede ser el
+data del item, o un sobre {"data": {...}, "reference"?, "priority"?,
+"deadline"?, "postpone"?} para metadatos por item. `--reference-field CAMPO`
+eleva ese campo de cada objeto a reference (idempotencia visible en consola).
+
+`action` remedia items en lote (p. ej. reintentar dead_letter tras arreglar la
+causa); usa la sesión de `nora login`.
+Scopes: queues:manage / queues:write / queues:read (action: solo sesión).
 """
 
 import argparse
@@ -41,17 +48,26 @@ def main() -> None:
 
     p_bulk = sub.add_parser("bulk", help="agregar items masivamente")
     p_bulk.add_argument("nombre")
-    p_bulk.add_argument("--file", required=True, help="JSON con lista de objetos")
+    p_bulk.add_argument("--file", required=True, help="JSON con lista de objetos (data plano o sobres)")
     p_bulk.add_argument("--priority", type=int, choices=[1, 3, 5], default=3)
+    p_bulk.add_argument("--reference-field",
+                        help="campo de cada objeto a usar como reference del item")
 
     p_list = sub.add_parser("list", help="listar items")
     p_list.add_argument("nombre")
     p_list.add_argument("--status", choices=STATUSES)
     p_list.add_argument("--page", type=int, default=1)
-    p_list.add_argument("--limit", type=int, default=20)
+    p_list.add_argument("--limit", type=int, default=20, choices=range(1, 101), metavar="1-100")
 
     p_stats = sub.add_parser("stats", help="conteo de items por estado")
     p_stats.add_argument("nombre")
+
+    p_action = sub.add_parser("action", help="acción masiva sobre items (sesión nora login)")
+    p_action.add_argument("accion", choices=["retry", "approve", "reject", "delete"])
+    p_action.add_argument("nombre")
+    grupo = p_action.add_mutually_exclusive_group(required=True)
+    grupo.add_argument("--status", choices=STATUSES, help="aplicar a todos los items en este estado")
+    grupo.add_argument("--ids", help="UUIDs de items separados por coma")
 
     args = parser.parse_args()
 
@@ -68,7 +84,7 @@ def main() -> None:
             valor = getattr(args, campo)
             if valor:
                 body[campo] = valor
-        item = nora_api.call_api_key("POST", f"/queues/by-name/{args.nombre}/items", body=body)
+        item = nora_api.call_api_key("POST", f"/queues/by-name/{nora_api.seg(args.nombre)}/items", body=body)
         nora_api.emit(item)
 
     elif args.cmd == "bulk":
@@ -76,11 +92,24 @@ def main() -> None:
             items = json.load(f)
         if not isinstance(items, list):
             raise nora_api.NoraError(f"{args.file} debe contener una lista JSON.", 2)
+        if args.reference_field:
+            envueltos = []
+            for objeto in items:
+                if isinstance(objeto.get("data"), dict):  # ya viene como sobre
+                    envueltos.append(objeto)
+                    continue
+                referencia = objeto.get(args.reference_field)
+                if referencia is None:
+                    raise nora_api.NoraError(
+                        f"Un item no tiene el campo '{args.reference_field}': {objeto!r}", 2
+                    )
+                envueltos.append({"data": objeto, "reference": str(referencia)})
+            items = envueltos
         total_agregados = 0
         for i in range(0, len(items), 1000):
             lote = items[i : i + 1000]
             result = nora_api.call_api_key(
-                "POST", f"/queues/by-name/{args.nombre}/items/bulk",
+                "POST", f"/queues/by-name/{nora_api.seg(args.nombre)}/items/bulk",
                 body={"items": lote, "priority": args.priority},
             )
             total_agregados += result.get("added", len(lote))
@@ -92,7 +121,7 @@ def main() -> None:
         if args.status:
             params["status"] = args.status
         result = nora_api.call_api_key(
-            "GET", f"/queues/by-name/{args.nombre}/items", params=params
+            "GET", f"/queues/by-name/{nora_api.seg(args.nombre)}/items", params=params
         )
         nora_api.emit(result)
 
@@ -100,12 +129,64 @@ def main() -> None:
         stats = {}
         for status in STATUSES:
             result = nora_api.call_api_key(
-                "GET", f"/queues/by-name/{args.nombre}/items",
+                "GET", f"/queues/by-name/{nora_api.seg(args.nombre)}/items",
                 params={"page": 1, "limit": 1, "status": status},
             )
             stats[status] = (result.get("meta") or {}).get("total", 0)
         stats["total"] = sum(stats.values())
         nora_api.emit(stats)
+
+    elif args.cmd == "action":
+        queue_id = _resolve_queue_id(args.nombre)
+        if args.ids:
+            item_ids = [i.strip() for i in args.ids.split(",") if i.strip()]
+        else:
+            item_ids = _item_ids_by_status(queue_id, args.status)
+            if not item_ids:
+                nora_api.emit({"affected": 0})
+                nora_api.eprint(f"No hay items en estado '{args.status}'.")
+                return
+        affected_total = 0
+        for i in range(0, len(item_ids), 1000):
+            result = nora_api.call_session(
+                "POST", f"/queues/{queue_id}/items/bulk-action",
+                body={"action": args.accion, "item_ids": item_ids[i : i + 1000]},
+            )
+            affected_total += result.get("affected", 0)
+        nora_api.emit({"action": args.accion, "affected": affected_total})
+
+
+def _resolve_queue_id(nombre: str) -> str:
+    """Nombre de cola → UUID (vía listado interno; requiere sesión nora login)."""
+    page = 1
+    while True:
+        result = nora_api.call_session("GET", "/queues", params={"page": page, "limit": 100})
+        colas = result["data"] if isinstance(result, dict) else result
+        for cola in colas:
+            if cola["name"] == nombre:
+                return cola["id"]
+        meta = result.get("meta") if isinstance(result, dict) else None
+        if not meta or page >= meta.get("pages", 1):
+            break
+        page += 1
+    raise nora_api.NoraError(f"Cola '{nombre}' no encontrada.", 1)
+
+
+def _item_ids_by_status(queue_id: str, status: str) -> list[str]:
+    ids: list[str] = []
+    page = 1
+    while True:
+        result = nora_api.call_session(
+            "GET", f"/queues/{queue_id}/items",
+            params={"page": page, "limit": 100, "status": status},
+        )
+        items = result["data"] if isinstance(result, dict) else result
+        ids.extend(i["id"] for i in items)
+        meta = result.get("meta") if isinstance(result, dict) else None
+        if not meta or page >= meta.get("pages", 1):
+            break
+        page += 1
+    return ids
 
 
 if __name__ == "__main__":

@@ -8,8 +8,11 @@ Uso:
         [--timeout 1800] [--max-retries 2] [--auto-retry] \
         [--assets ASSET1,ASSET2] [--tags a,b] [--description "..."]
     nora_process.py active <process_id> --on|--off
+    nora_process.py set-release <process_id|nombre> --release <paquete@version|release_id>
 
-Scopes: processes:read / processes:write. Fallback: sesión de `nora login`.
+Scopes: processes:read / processes:write. Fallback a sesión de `nora login`:
+list, releases y create degradan; `active` es solo API key; `set-release` es
+SOLO sesión (endpoint interno de promote/rollback de release).
 """
 
 import argparse
@@ -69,6 +72,12 @@ def main() -> None:
     grupo.add_argument("--on", action="store_true")
     grupo.add_argument("--off", action="store_true")
 
+    p_setrel = sub.add_parser(
+        "set-release", help="apuntar el proceso a otra release (promote/rollback; sesión)"
+    )
+    p_setrel.add_argument("process", help="UUID o nombre del proceso")
+    p_setrel.add_argument("--release", required=True, help="paquete@version | paquete | release_id")
+
     args = parser.parse_args()
 
     if args.cmd == "list":
@@ -110,9 +119,21 @@ def main() -> None:
 
     elif args.cmd == "active":
         process = nora_api.call_api_key(
-            "PATCH", f"/processes/{args.process_id}/active",
+            "PATCH", f"/processes/{nora_api.seg(args.process_id)}/active",
             body={"is_active": bool(args.on)},
         )
+        nora_api.emit(process)
+
+    elif args.cmd == "set-release":
+        from nora_trigger import resolve_process_id
+
+        process_id = resolve_process_id(args.process)
+        release_id = resolve_release_id(args.release)
+        process = nora_api.call_session(
+            "PATCH", f"/processes/{nora_api.seg(process_id)}/active-release",
+            body={"release_id": release_id},
+        )
+        nora_api.eprint(f"Proceso {process['name']} ahora apunta a la release {release_id}.")
         nora_api.emit(process)
 
 

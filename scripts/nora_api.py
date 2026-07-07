@@ -59,6 +59,12 @@ def _api_key() -> str | None:
     return key or None
 
 
+def seg(value: str) -> str:
+    """Percent-encodea un segmento de path (nombres de colas/assets con
+    espacios, '/', '?', '#'...). Igual criterio que _seg() del SDK."""
+    return urllib.parse.quote(str(value), safe="")
+
+
 def eprint(msg: str) -> None:
     print(msg, file=sys.stderr)
 
@@ -91,7 +97,11 @@ def _http(method: str, url: str, headers: dict, body: dict | None) -> dict:
             raw = e.read().decode(errors="replace")
             if e.code == 429 and attempt < MAX_RETRIES_429:
                 attempt += 1
-                wait = int(e.headers.get("Retry-After") or 0) or (2 ** attempt * 5)
+                try:
+                    wait = int(e.headers.get("Retry-After") or 0)
+                except ValueError:
+                    wait = 0
+                wait = wait or (2 ** attempt * 5)
                 eprint(f"[429] Rate limit — reintento {attempt}/{MAX_RETRIES_429} en {wait}s...")
                 time.sleep(wait)
                 continue

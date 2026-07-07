@@ -1,0 +1,14 @@
+{
+  "name": "mi-robot-web",
+  "version": "1.0.0",
+  "entry_point": "main.py",
+  "inputs": [
+    { "name": "max_items", "type": "integer", "default": 0, "description": "Máximo de items a procesar (0 = sin límite)" },
+    { "name": "headless", "type": "bool", "default": true, "description": "Navegador sin ventana (false para depurar en local)" }
+  ],
+  "outputs": [
+    { "name": "procesados", "type": "integer" },
+    { "name": "fallidos_negocio", "type": "integer" },
+    { "name": "fallidos_sistema", "type": "integer" }
+  ]
+}

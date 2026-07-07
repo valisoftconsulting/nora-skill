@@ -43,14 +43,16 @@ def main() -> None:
             body["description"] = args.description
         trigger = nora_api.call("POST", "/triggers/create", body=body, session_path="/triggers")
         nora_api.eprint(
-            "Trigger creado. GUARDA EL SECRET AHORA — no se puede volver a consultar."
+            "Trigger creado. GUARDA EL SECRET AHORA — no se puede volver a consultar.\n"
+            "Sugerencia: redirige stdout a un archivo (…create > trigger.json && chmod 600 "
+            "trigger.json) para no dejar el secret en el transcript/terminal."
         )
         nora_api.emit(trigger)
 
     elif args.cmd == "rotate-secret":
         result = nora_api.call(
-            "POST", f"/triggers/{args.trigger_id}/rotate-secret",
-            session_path=f"/triggers/{args.trigger_id}/regenerate-secret",
+            "POST", f"/triggers/{nora_api.seg(args.trigger_id)}/rotate-secret",
+            session_path=f"/triggers/{nora_api.seg(args.trigger_id)}/regenerate-secret",
         )
         nora_api.eprint("Secret rotado. GUARDA EL NUEVO SECRET AHORA.")
         nora_api.emit(result)

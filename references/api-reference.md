@@ -36,7 +36,7 @@ desenvuelven esto.
 | `/queues/create` | POST | `queues:manage` | 10 | `nora_queue.py create` |
 | `/queues/by-name/{n}/items` | POST | `queues:write` | 60 | `nora_queue.py add` |
 | `/queues/by-name/{n}/items` | GET | `queues:read` | 60 | `nora_queue.py list` / `stats` |
-| `/queues/by-name/{n}/items/bulk` | POST | `queues:write` | 20 | `nora_queue.py bulk` |
+| `/queues/by-name/{n}/items/bulk` | POST | `queues:write` | 20 | `nora_queue.py bulk` (soporta sobre por item, ver abajo) |
 | `/schedules/create` | POST | `schedules:manage` | 10 | `nora_schedule.py create` |
 | `/schedules/{id}/active` | PATCH | `schedules:manage` | 30 | `nora_schedule.py active` |
 | `/triggers/create` | POST | `triggers:manage` | 10 | `nora_trigger_mgmt.py create` |
@@ -45,6 +45,29 @@ desenvuelven esto.
 
 Detalles de payloads: docs vivas → `api/gestion`, `api/disparar-jobs`,
 `api/colas`, `api/assets`.
+
+## Bulk con metadatos por item (sobre)
+
+Cada elemento de `items` en el bulk puede ser el data plano del item, **o un
+sobre** para asignar metadatos por item:
+
+```json
+{
+  "items": [
+    { "cliente": "ACME" },
+    { "data": {"cliente": "GLOBEX"}, "reference": "OC-9", "priority": 5,
+      "deadline": "2026-12-31T23:59:00Z" }
+  ],
+  "priority": 3
+}
+```
+
+- `reference` = clave de idempotencia/trazabilidad, visible en la consola.
+- `priority` del request es el default para items sin priority propio.
+- Si tu data legítimamente tiene una clave `data` de tipo dict al tope,
+  envuélvela: `{"data": {"data": {...}}}`.
+- `nora_queue.py bulk --reference-field id` eleva un campo a reference
+  automáticamente.
 
 ## Reglas para operar
 
@@ -95,10 +118,30 @@ Dos vías:
    `X-Webhook-Signature: sha256=<HMAC-SHA256(secret, raw_body)>`. El payload
    JSON llega al robot como parte del input.
 
-## Fallback por sesión (`nora login`)
+## Fallback por sesión (`nora login`) — qué degrada y qué no
 
-Los scripts intentan primero la API key; si falta o no tiene el scope, usan la
-sesión del CLI (`~/.nora/credentials.json`) contra los endpoints internos de
-la consola, respetando el rol del usuario (crear procesos/assets requiere
-admin). El refresh token rota en cada uso — los scripts guardan el nuevo
-automáticamente. Ojo: los endpoints internos no son contrato público estable.
+La sesión del CLI (`~/.nora/credentials.json`, refresh rotativo que los
+scripts guardan solos) da acceso a los endpoints internos de la consola,
+respetando el rol del usuario. **No todos los subcomandos degradan** — tabla
+honesta:
+
+| Subcomando | API key | Fallback sesión |
+| --- | --- | --- |
+| `nora_list.py machines/processes` | ✓ | ✓ |
+| `nora_list.py queues/schedules/jobs/triggers` | ✗ | ✓ (solo sesión) |
+| `nora_trigger.py` / `nora_smoke.py` | ✓ | ✓ |
+| `nora_job.py status/stop` | ✓ | ✓ |
+| `nora_job.py rerun/respond` | ✗ | ✓ (solo sesión) |
+| `nora_queue.py create` | ✓ | ✓ |
+| `nora_queue.py add/bulk/list/stats` | ✓ | ✗ (solo API key) |
+| `nora_queue.py action` (retry/approve/reject/delete) | ✗ | ✓ (solo sesión) |
+| `nora_asset.py get/set` | ✓ | set crea con sesión; get y update-por-nombre solo API key |
+| `nora_process.py list/releases/create` | ✓ | ✓ |
+| `nora_process.py active` | ✓ | ✗ |
+| `nora_process.py set-release` | ✗ | ✓ (solo sesión) |
+| `nora_schedule.py create` | ✓ | ✓ |
+| `nora_schedule.py active` | ✓ | ✗ |
+| `nora_trigger_mgmt.py` | ✓ | ✓ |
+
+Ojo: los endpoints internos no son contrato público estable; para
+integraciones permanentes usa siempre la API key.

@@ -59,7 +59,7 @@ export NORA_API_URL=https://nora-api.valisoftconsulting.com/api/v1
 SKILL.md          punto de entrada del agente (flujos A–D + reglas duras)
 references/       contratos verificados: SDK, API, colas, CLI, migraciones, checklist
 scripts/          herramientas stdlib contra la API (nora_list, nora_trigger, nora_queue, ...)
-templates/        robots base: minimal · transactional (REFramework) · dispatcher-performer
+templates/        robots base: minimal · transactional (REFramework) · dispatcher-performer · browser (Playwright)
 evals/            escenarios de prueba del skill
 ```
 

@@ -11,7 +11,7 @@ description: >
   dispatcher, performer, attended, migration, orchestrator.
 license: MIT
 metadata:
-  version: "1.0.0"
+  version: "1.1.0"
   compatible-sdk: "nora-sdk >= 0.7"
   docs: https://docs.valisoftconsulting.com
 ---
@@ -98,6 +98,11 @@ Referencia: `references/api-reference.md` (tabla endpoint→scope→script).
    su desenlace.
 4. Diagnóstico de fallos: job → `error_message`; cola →
    `nora_queue.py list --status failed|dead_letter` y stats.
+5. Remediación y despliegue sin UI: `nora_queue.py action retry <cola>
+   --status dead_letter` (reintentos en lote tras arreglar la causa),
+   `nora_process.py set-release` (promote/rollback de release),
+   `nora_job.py rerun|respond` (relanzar / responder attended). Estos usan la
+   sesión de `nora login` — la tabla de qué degrada está en api-reference.
 
 ## Reglas duras (siempre aplican)
 

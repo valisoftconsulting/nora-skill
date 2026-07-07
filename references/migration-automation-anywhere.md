@@ -43,7 +43,9 @@ diseño (colas WLM, credenciales, triggers), reescribiendo la automatización.
 3. **Recrear infraestructura**: colas, assets (dev primero), luego proceso.
 4. **Implementar sobre `robot-transactional`** (WLM ≈ cola transaccional):
    el flujo del bot → `process_transaction()`; sub-bots → funciones/módulos.
-5. **Migrar work items pendientes**: exportar de WLM → `nora_queue.py bulk`.
+5. **Migrar work items pendientes**: exportar de WLM →
+   `nora_queue.py bulk --reference-field <campo clave>` (conserva la clave del
+   work item como reference por item).
 6. **Validar en pirámide** y corrida en paralelo antes de apagar el bot A360.
 
 ## Diferencias a explicar al usuario
