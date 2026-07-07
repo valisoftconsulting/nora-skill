@@ -39,10 +39,15 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.cmd == "create":
-        machine = nora_api.call_session(
-            "POST", "/machines",
-            body={"name": args.name, "max_concurrent_jobs": args.max_concurrent},
-        )
+        # El alta solo acepta `name`; la concurrencia se fija con un PUT
+        # posterior (el backend descarta campos extra en la creación).
+        machine = nora_api.call_session("POST", "/machines", body={"name": args.name})
+        if args.max_concurrent != 1:
+            nora_api.call_session(
+                "PUT", f"/machines/{nora_api.seg(machine['id'])}",
+                body={"max_concurrent_jobs": args.max_concurrent},
+            )
+            machine["max_concurrent_jobs"] = args.max_concurrent
         nora_api.eprint(
             "Máquina creada. GUARDA LA machine_key AHORA — no se vuelve a mostrar\n"
             "completa. Siguiente paso: consola → Máquinas → Descargar agente (el\n"

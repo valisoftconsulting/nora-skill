@@ -88,7 +88,16 @@ def check_helpers_copies() -> list[str]:
     problemas: list[str] = []
     canonical = SKILL_ROOT / "templates" / "nora_helpers.py"
     canonical_hash = hashlib.sha256(canonical.read_bytes()).hexdigest()
-    for copia in sorted(SKILL_ROOT.glob("templates/robot-*/nora_helpers.py")):
+    # Cada template robot-* DEBE traer su propia copia (el robot se empaqueta
+    # autosuficiente): si a uno le falta, es un template roto, no un no-op.
+    for template_dir in sorted(SKILL_ROOT.glob("templates/robot-*")):
+        copia = template_dir / "nora_helpers.py"
+        if not copia.is_file():
+            problemas.append(
+                f"{template_dir.relative_to(SKILL_ROOT)} no tiene nora_helpers.py "
+                "— cópialo de templates/nora_helpers.py."
+            )
+            continue
         if hashlib.sha256(copia.read_bytes()).hexdigest() != canonical_hash:
             problemas.append(
                 f"{copia.relative_to(SKILL_ROOT)} difiere de templates/nora_helpers.py "

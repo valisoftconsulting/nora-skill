@@ -33,7 +33,7 @@ from pathlib import Path
 
 DEFAULT_API_URL = "https://nora-api.valisoftconsulting.com/api/v1"
 SESSION_FILE = Path.home() / ".nora" / "credentials.json"
-USER_AGENT = "nora-skill/1.0"
+USER_AGENT = "nora-skill/1.2"
 MAX_RETRIES_429 = 3
 
 
