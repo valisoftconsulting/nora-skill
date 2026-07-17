@@ -1,7 +1,20 @@
-# nora-skill
+# NORA Skill — RPA para Claude Code, Codex y Gemini
 
-Skill oficial de **NORA** (Robots Center de Valisoft) para agentes de IA:
-**Claude Code, OpenAI Codex y Gemini CLI**. Le da a tu agente la capacidad de:
+> **Skill oficial de NORA (Robots Center de Valisoft)** para desarrollar, migrar,
+> operar y depurar **robots RPA en Python** desde agentes de IA. Compatible con
+> **Claude Code, OpenAI Codex y Gemini CLI**.
+
+![License: MIT](https://img.shields.io/badge/license-MIT-green)
+![RPA](https://img.shields.io/badge/RPA-NORA-blue)
+![Agents](https://img.shields.io/badge/agents-Claude%20Code%20·%20Codex%20·%20Gemini-purple)
+![Python](https://img.shields.io/badge/python-3.10%2B-blue)
+
+**NORA Skill** convierte a tu agente de IA en un ingeniero RPA experto en la
+plataforma **NORA** (el orquestador de robots de **Valisoft Consulting**). Es la
+forma más rápida de crear robots de automatización, migrar desde **UiPath** o
+**Automation Anywhere**, y controlar el orquestador desde tu terminal.
+
+Le da a tu agente la capacidad de:
 
 - **Desarrollar robots NORA desde cero** con nivel profesional: manifiesto,
   argumentos tipados, colas transaccionales, assets, excepciones
@@ -86,3 +99,23 @@ evals/            escenarios de prueba del skill (5 flujos)
 ## Licencia
 
 MIT para este skill. NORA es un producto propietario de Valisoft Consulting.
+
+---
+
+### Sobre NORA y este skill
+
+**NORA** es el **Robots Center** (orquestador RPA) de **Valisoft Consulting**:
+permite desarrollar, desplegar, agendar y monitorear **robots de automatización
+de procesos (RPA)** escritos en **Python**. Este **skill de NORA** para
+**Claude Code**, **OpenAI Codex** y **Gemini CLI** automatiza todo el ciclo de
+vida del robot: scaffolding, colas transaccionales, assets/credenciales, jobs,
+procesos, schedules, triggers, releases y gestión de la flota de agentes.
+
+**Palabras clave:** NORA, nora-skill, Valisoft, Robots Center, RPA, robot RPA
+Python, automatización de procesos, orquestador RPA, nora-sdk, Claude Code skill,
+Codex, Gemini CLI, migración UiPath a NORA, migración Automation Anywhere,
+REFramework, Orchestrator queues, Playwright, pywinauto, SAP GUI, dispatcher
+performer, colas transaccionales, dead letter, automatización Excel.
+
+**Enlaces:** [Documentación de NORA](https://docs.valisoftconsulting.com) ·
+[Valisoft Consulting](https://valisoftconsulting.com)
